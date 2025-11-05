@@ -7,6 +7,7 @@ Date: June 12, 2025
 
 import asyncio
 import json
+import sys
 from mcp.server.models import InitializationOptions
 import mcp.types as types
 from mcp.server import NotificationOptions, Server
@@ -202,6 +203,8 @@ async def main():
     # Run the server using stdin/stdout streams
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         # Note: Don't print to stdout as it interferes with JSON-RPC protocol
+        # Emit a startup notice to stderr so users know we're waiting on stdio.
+        print("[api-mcp-server] Started; waiting for JSON-RPC on stdio (Claude Desktop)", file=sys.stderr, flush=True)
         await server.run(
             read_stream,
             write_stream,

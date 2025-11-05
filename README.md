@@ -2,14 +2,14 @@
 
 > **Connect Claude Desktop to Aras Innovator PLM via OAuth 2.0!**
 
-This Model Context Protocol (MCP) server enables Claude Desktop to interact with Aras Innovator using modern OAuth 2.0 authentication and OData REST APIs, allowing you to query PLM data, create items, and call methods directly from your AI assistant.
+This Model Context Protocol (MCP) server enables Claude Desktop to interact with Aras Innovator or Innovator Edge through configurable authentication and REST APIs, allowing you to query PLM data, create items, and call methods directly from your AI assistant.
 
 ## ✨ What can you do?
 
-- 🔐 **Secure OAuth 2.0 authentication** with Aras Innovator 14+
-- 📊 **Query PLM data** using OData REST endpoints  
+- 🔐 **Secure authentication** with Aras Innovator OAuth 2.0 or Edge API keys
+- 📊 **Query PLM data** using OData REST endpoints across supported backends  
 - ✍️ **Create new items** (Parts, Documents, etc.) directly from Claude
-- 🔧 **Call Aras server methods** and custom endpoints
+- 🔧 **Call Aras server methods** or Edge REST operations
 - 📋 **Access lists** and configuration data
 - 🛡️ **Enterprise-grade security** with bearer token authentication
 
@@ -22,10 +22,10 @@ This Model Context Protocol (MCP) server enables Claude Desktop to interact with
 ### 🤖 Claude Desktop (free!)
 - Download from [claude.ai](https://claude.ai/download) - no subscription required!
 
-### 🏢 Aras Innovator 14+ with OAuth 2.0
-- Aras Innovator server with OAuth 2.0 endpoints enabled
-- Valid Aras user credentials with API permissions
-- Database access permissions
+### 🏢 Aras Innovator 14+ or Innovator Edge
+- Aras Innovator server with OAuth 2.0 endpoints enabled, or Innovator Edge environment access
+- Valid credentials for the chosen backend (username/password/database for Aras, API key or token for Edge)
+- Required API permissions
 
 ## 🎯 Quick start
 
@@ -39,19 +39,32 @@ pip install -r requirements.txt
 ### 2️⃣ Configure your Aras connection
 Create a `.env` file in the project root:
 ```env
-# Aras Innovator OAuth 2.0 Configuration
+# Core configuration
+API_BACKEND=ARAS
 API_URL=https://your-aras-server.com/YourDatabase
+ARAS_DATABASE=YourDatabase
+API_BASE_PATH=/Server/Odata
+AUTH_MODE=ARAS_OAUTH
 API_USERNAME=your-aras-username
 API_PASSWORD=your-aras-password
-ARAS_DATABASE=YourDatabase
 
-# Optional Configuration
+# Optional configuration
 API_TIMEOUT=30
 API_RETRY_COUNT=3
 API_RETRY_DELAY=1
 LOG_LEVEL=INFO
+
+# Innovator Edge overrides (uncomment if needed)
+# API_BACKEND=EDGE
+# API_BASE_PATH=
+# EDGE_METHOD_PREFIX=methods
+# AUTH_MODE=API_KEY
+# EDGE_API_KEY_HEADER=Authorization
+# EDGE_API_KEY=your-edge-api-key
+# EDGE_BEARER_TOKEN=
+# EDGE_BASIC_USER=
+# EDGE_BASIC_PASS=
 ```
-> 💡 Copy from `env_example.txt` and update with your Aras credentials
 
 ### 3️⃣ Add to Claude Desktop
 Edit your Claude Desktop config file:
@@ -86,19 +99,23 @@ Restart Claude Desktop and try:
 - *"Get all Parts from the database"*
 - *"Show me the available Document types"*
 
+## Multiple backends
+
+Set `API_BACKEND` to choose between Aras Innovator and Innovator Edge. The default base path is `/Server/Odata` for Aras and blank for Edge, but you can override it with `API_BASE_PATH`. When using Edge, configure the authentication mode (`AUTH_MODE`) and the related credentials such as `EDGE_API_KEY`, `EDGE_BEARER_TOKEN`, or `EDGE_BASIC_USER` and `EDGE_BASIC_PASS`. The MCP tool set stays the same across both backends.
+
 ## 🛠️ Available tools
 
 | Tool | Description | What You Can Ask | Example Endpoint |
 |------|-------------|------------------|------------------|
 | **`test_api_connection`** | Test OAuth 2.0 authentication | *"Test my API connection"* | N/A |
-| **`api_get_items`** | Query Aras OData | *"Get all Parts"* | `Part`, `Document` |
-| **`api_create_item`** | Create new Aras items | *"Create a new Part"* | `Part`, `Document` |
-| **`api_call_method`** | Call Aras server methods | *"Call method GetItemsInBOM"* | Method names |
-| **`api_get_list`** | Get Aras list values | *"Show Part categories"* | List IDs |
+| **`api_get_items`** | Query configured OData endpoints | *"Get all Parts"* | `Part`, `Document` |
+| **`api_create_item`** | Create items through the active backend | *"Create a new Part"* | `Part`, `Document` |
+| **`api_call_method`** | Call server methods or Edge operations | *"Call method GetItemsInBOM"* | Method names |
+| **`api_get_list`** | Get list values from the current backend | *"Show Part categories"* | List IDs |
 
-## 🔐 OAuth 2.0 Authentication
+## 🔐 Authentication
 
-This agent uses **OAuth 2.0 Resource Owner Password Credentials Grant** for secure authentication with Aras Innovator 14+. The authentication flow:
+The default `AUTH_MODE=ARAS_OAUTH` uses the **Resource Owner Password Credentials Grant** with Aras Innovator 14+:
 
 1. **Token Request**: `https://your-server/oauthserver/connect/token`
 2. **Scope**: `openid Innovator offline_access`  
@@ -106,13 +123,21 @@ This agent uses **OAuth 2.0 Resource Owner Password Credentials Grant** for secu
 4. **Grant Type**: `password`
 5. **Required**: `username`, `password`, `database`
 
+Other supported modes:
+
+- `API_KEY`: Adds an API key header defined by `EDGE_API_KEY_HEADER`.
+- `EDGE_BEARER`: Uses a static bearer token from `EDGE_BEARER_TOKEN`.
+- `BASIC`: Applies HTTP basic auth with `EDGE_BASIC_USER` and `EDGE_BASIC_PASS`.
+- `NONE`: No authentication headers are sent.
+
 ## 💬 Example conversations
 
 ```
 You: "Test my API connection"
-Claude: ✅ Successfully authenticated with API!
-Bearer token obtained and ready for API calls.
-Server URL: https://your-server.com/YourDatabase
+Claude: ✅ Connection ready.
+Backend: ARAS
+Auth mode: ARAS_OAUTH
+Base URL: https://your-server.com/YourDatabase
 
 You: "Get all Parts where item_number starts with 'P-'"
 Claude: Retrieved 25 Parts matching your criteria...
@@ -127,9 +152,10 @@ Claude: Successfully created Document with ID A1B2C3D4...
 - **Fixed**: "Unexpected token 'A', 'API MCP Se'... is not valid JSON" error
 - **Added**: Proper OAuth 2.0 authentication with `requests-oauthlib`
 - **Added**: Database parameter requirement for Aras authentication
+- **Added**: Multiple backends via `API_BACKEND`, adjustable base paths, and method routing
+- **Added**: Flexible auth modes (`ARAS_OAUTH`, `API_KEY`, `EDGE_BEARER`, `BASIC`, `NONE`)
 - **Fixed**: All print statements redirected to stderr to prevent stdout contamination
-- **Updated**: OData endpoint support (`/Server/Odata`)
-- **Added**: Proper HTTP headers for Aras REST API
+- **Updated**: OData endpoint support (`/Server/Odata`) and default request headers
 
 ### 🛠️ Troubleshooting
 
@@ -137,9 +163,10 @@ Claude: Successfully created Document with ID A1B2C3D4...
 - Verify your Aras server supports OAuth 2.0 (Aras 14+)
 - Check credentials and database name in `.env`
 - Ensure user has API access permissions
+- If you're using Innovator Edge, confirm `AUTH_MODE` matches the credentials supplied (`API_KEY`, `EDGE_BEARER`, or `BASIC`)
 
 **🔐 "Missing database parameter" error?**
-- Add `ARAS_DATABASE=YourDatabaseName` to your `.env` file
+- Add `ARAS_DATABASE=YourDatabaseName` and keep `AUTH_MODE=ARAS_OAUTH`
 
 **🤖 Claude not finding tools?**
 - Restart Claude Desktop after config changes

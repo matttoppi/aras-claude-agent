@@ -13,6 +13,7 @@ import mcp.types as types
 from mcp.server import NotificationOptions, Server
 import mcp.server.stdio
 from .api_client import APIClient
+from .config import BACKEND, AUTH_MODE
 
 server = Server("api-mcp-server")
 api_client = APIClient()
@@ -122,14 +123,22 @@ async def handle_call_tool(
             # Test authentication and get bearer token
             authenticated = api_client.authenticate()
             if authenticated:
+                base_url = api_client.url or ''
+                if api_client.base_path:
+                    base_url = f"{base_url.rstrip('/')}/{api_client.base_path.lstrip('/')}"
                 return [types.TextContent(
-                    type="text", 
-                    text=f"✅ Successfully authenticated with API!\nBearer token obtained and ready for API calls.\nServer URL: {api_client.url}"
+                    type="text",
+                    text=(
+                        "Connection ready.\n"
+                        f"Backend: {BACKEND}\n"
+                        f"Auth mode: {AUTH_MODE}\n"
+                        f"Base URL: {base_url}"
+                    )
                 )]
             else:
                 return [types.TextContent(
                     type="text", 
-                    text="❌ Failed to authenticate with API. Please check your credentials."
+                    text="Failed to authenticate with API. Please check your credentials."
                 )]
         
         elif name == "api_get_items":

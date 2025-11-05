@@ -33,4 +33,21 @@ TIMEOUT = int(os.getenv('API_TIMEOUT', '30'))
 RETRY_COUNT = int(os.getenv('API_RETRY_COUNT', '3'))
 RETRY_DELAY = int(os.getenv('API_RETRY_DELAY', '1'))
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
-LOG_FILE = os.getenv('LOG_FILE', 'api_client.log') 
+LOG_FILE = os.getenv('LOG_FILE', 'api_client.log')
+
+# Backend selection and routing
+BACKEND = os.getenv('API_BACKEND', 'ARAS').upper()
+EDGE_METHOD_PREFIX = os.getenv('EDGE_METHOD_PREFIX', 'methods')
+DEFAULT_BASE_PATH = '/Server/Odata' if BACKEND == 'ARAS' else ''
+BASE_PATH = os.getenv('API_BASE_PATH', DEFAULT_BASE_PATH)
+
+# Authentication strategy inputs
+AUTH_MODE = os.getenv(
+    'AUTH_MODE',
+    'ARAS_OAUTH' if BACKEND == 'ARAS' else 'NONE',
+).upper()
+EDGE_API_KEY_HEADER = os.getenv('EDGE_API_KEY_HEADER', 'x-api-key')
+EDGE_API_KEY = os.getenv('EDGE_API_KEY')
+EDGE_BEARER_TOKEN = os.getenv('EDGE_BEARER_TOKEN')
+EDGE_BASIC_USER = os.getenv('EDGE_BASIC_USER')
+EDGE_BASIC_PASS = os.getenv('EDGE_BASIC_PASS')

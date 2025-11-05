@@ -292,7 +292,7 @@ async def main():
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         # Note: Don't print to stdout as it interferes with JSON-RPC protocol
         # Emit a startup notice to stderr so users know we're waiting on stdio.
-        print("[api-mcp-server] Started; waiting for JSON-RPC on stdio (Claude Desktop)", file=sys.stderr, flush=True)
+        # print("[api-mcp-server] Started; waiting for JSON-RPC on stdio (Claude Desktop)", file=sys.stderr, flush=True)
         await server.run(
             read_stream,
             write_stream,

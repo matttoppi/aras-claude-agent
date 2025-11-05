@@ -51,7 +51,11 @@ async def handle_list_tools() -> list[types.Tool]:
                     "select": {
                         "type": "string",
                         "description": "Optional: select parameter for specific fields",
-                    }
+                    },
+                    "auto_resolve": {
+                        "type": "boolean",
+                        "description": "Optional: automatically resolve friendly item type aliases",
+                    },
                 },
                 "required": ["endpoint"],
             },
@@ -110,6 +114,36 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["list_id"],
             },
         ),
+        types.Tool(
+            name="api_get_metadata",
+            description="Return raw OData $metadata (CSDL) from the API for inspection",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        types.Tool(
+            name="api_list_itemtypes",
+            description="List available item types (entity sets) discovered from $metadata",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        types.Tool(
+            name="api_resolve_itemtype",
+            description="Resolve a user-supplied label/alias to a valid entity set (uses $metadata + fuzzy matching)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Candidate item type label, e.g., 'PR' or 'Problem Report'",
+                    },
+                },
+                "required": ["name"],
+            },
+        ),
     ]
 
 @server.call_tool()
@@ -149,12 +183,20 @@ async def handle_call_tool(
                 arguments["endpoint"],
                 expand=arguments.get("expand"),
                 filter_param=arguments.get("filter"),
-                select=arguments.get("select")
+                select=arguments.get("select"),
+                auto_resolve=arguments.get("auto_resolve"),
             )
+            resolution_note = ""
+            if isinstance(item_data, dict):
+                resolution_note = item_data.get('_meta', {}).get('endpoint_resolution', '')
+            suffix = f" [{resolution_note}]" if resolution_note else ""
             return [
                 types.TextContent(
                     type="text",
-                    text=f"Retrieved items from {arguments['endpoint']}:\n{json.dumps(item_data, indent=2)}"
+                    text=(
+                        f"Retrieved items from {arguments['endpoint']}{suffix}:\n"
+                        f"{json.dumps(item_data, indent=2)}"
+                    )
                 )
             ]
         
@@ -194,6 +236,43 @@ async def handle_call_tool(
                 types.TextContent(
                     type="text",
                     text=f"List {arguments['list_id']} data:\n{json.dumps(list_data, indent=2)}"
+                )
+            ]
+        
+        elif name == "api_get_metadata":
+            metadata = api_client.get_metadata_raw()
+            return [
+                types.TextContent(
+                    type="text",
+                    text=metadata
+                )
+            ]
+
+        elif name == "api_list_itemtypes":
+            index = api_client._get_schema_index()
+            entities = index.get('entities', {})
+            pretty = [
+                {
+                    "entity_set": key,
+                    **value,
+                }
+                for key, value in sorted(entities.items())
+            ]
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(pretty, indent=2)
+                )
+            ]
+
+        elif name == "api_resolve_itemtype":
+            if not arguments or "name" not in arguments:
+                raise ValueError("Name is required")
+            resolution = api_client.resolve_endpoint(arguments["name"])
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(resolution, indent=2)
                 )
             ]
         

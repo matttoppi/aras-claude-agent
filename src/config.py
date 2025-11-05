@@ -51,3 +51,26 @@ EDGE_API_KEY = os.getenv('EDGE_API_KEY')
 EDGE_BEARER_TOKEN = os.getenv('EDGE_BEARER_TOKEN')
 EDGE_BASIC_USER = os.getenv('EDGE_BASIC_USER')
 EDGE_BASIC_PASS = os.getenv('EDGE_BASIC_PASS')
+
+SCHEMA_CACHE_TTL = int(os.getenv('SCHEMA_CACHE_TTL', '60')) # 60 seconds is 1 minute
+AUTO_RESOLVE_ITEMTYPE = os.getenv('AUTO_RESOLVE_ITEMTYPE', 'true').lower() == 'true'
+
+
+def _parse_alias_env(val: str | None) -> dict[str, str]:
+    """Convert `ITEMTYPE_ALIASES` env (`A:B;C:D`) into a lookup dict."""
+    if not val:
+        return {}
+    out: dict[str, str] = {}
+    for pair in val.split(';'):
+        pair = pair.strip()
+        if not pair or ':' not in pair:
+            continue
+        key, value = pair.split(':', 1)
+        key = key.strip()
+        value = value.strip()
+        if key and value:
+            out[key] = value
+    return out
+
+
+ITEMTYPE_ALIASES = _parse_alias_env(os.getenv('ITEMTYPE_ALIASES'))

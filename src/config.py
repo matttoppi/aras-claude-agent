@@ -5,10 +5,13 @@ Date: June 12, 2025
 """
 
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Ensure values from .env override any pre-set environment variables
-load_dotenv(override=True)
+# Load .env from the project root (parent directory of src/)
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(env_path, override=True)
 
 def _sanitize_base_url(url: str | None) -> str | None:
     """Normalize API_URL to avoid common mistakes.

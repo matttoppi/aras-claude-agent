@@ -1,202 +1,215 @@
 # 🚀 Aras Innovator Claude Agent
 
-> **Connect Claude Desktop to Aras Innovator PLM via OAuth 2.0!**
+> **Connect Claude Desktop to Aras Innovator PLM through the Model Context Protocol (MCP)**
 
-This Model Context Protocol (MCP) server enables Claude Desktop to interact with Aras Innovator or Innovator Edge through configurable authentication and REST APIs, allowing you to query PLM data, create items, and call methods directly from your AI assistant.
+This MCP server lets Claude Desktop securely interact with Aras Innovator using either **Aras InnovatorEdge** or **Configurable Web Services (CWS)**. It exposes a set of structured tools that allow Claude to query PLM data, explore metadata, create items, call methods, and more—all through natural language.
 
 ## ✨ What can you do?
 
-- 🔐 **Secure authentication** with Aras Innovator OAuth 2.0 or Edge API keys
-- 📊 **Query PLM data** using OData REST endpoints across supported backends  
-- ✍️ **Create new items** (Parts, Documents, etc.) directly from Claude
-- 🔧 **Call Aras server methods** or Edge REST operations
-- 📋 **Access lists** and configuration data
-- 🛡️ **Enterprise-grade security** with bearer token authentication
+* 🔐 **Authenticate securely** using API key–based access
+* 📊 **Query PLM data** over REST/OData
+* 🧠 **Explore your schema** via `$metadata` discovery
+* ✍️ **Create Items** (Part, Document, custom ItemTypes, etc.)
+* 🔧 **Call Aras server methods**
+* 🔄 **Automatically resolve ItemTypes** using fuzzy matching
+* 🛡️ **Edge-first design** with full compatibility for CWS
+
+---
 
 ## 📋 Prerequisites
 
 ### 🐍 Python 3.8+
-- **Windows:** Download from [python.org](https://www.python.org/downloads/)
-- **macOS/Linux:** `brew install python` or `sudo apt install python3 python3-pip`
 
-### 🤖 Claude Desktop (free!)
-- Download from [claude.ai](https://claude.ai/download) - no subscription required!
+* Windows/macOS/Linux supported
 
-### 🏢 Aras Innovator 14+ or Innovator Edge
-- Aras Innovator server with OAuth 2.0 endpoints enabled, or Innovator Edge environment access
-- Valid credentials for the chosen backend (username/password/database for Aras, API key or token for Edge)
-- Required API permissions
+### 🤖 Claude Desktop
+
+* Download from [https://claude.ai/download](https://claude.ai/download)
+* No subscription required
+
+### 🏢 Aras Innovator (CWS or Edge)
+
+This agent supports:
+
+* **Aras InnovatorEdge** (API-key access)
+* **Aras Innovator REST via CWS** (standard /Server/OData endpoint)
+
+Both backends use the **same config pattern**.
+
+---
 
 ## 🎯 Quick start
 
 ### 1️⃣ Clone & install
+
 ```bash
-git clone https://github.com/DaanTheoden/aras-claude-agent.git
+git clone https://github.com/ArasLabs/aras-claude-agent.git
 cd aras-claude-agent
 pip install -r requirements.txt
 ```
 
-### 2️⃣ Configure your Aras connection
-Create a `.env` file in the project root:
+---
+
+## 2️⃣ Configure your connection
+
+Create a `.env` file in the project root.
+
+### **Option A — InnovatorEdge backend**
+
 ```env
-# Core configuration
-API_BACKEND=ARAS
-API_URL=https://your-aras-server.com/YourDatabase
-ARAS_DATABASE=YourDatabase
-API_BASE_PATH=/Server/Odata
-AUTH_MODE=ARAS_OAUTH
-API_USERNAME=your-aras-username
-API_PASSWORD=your-aras-password
+API_BACKEND=EDGE
+AUTH_MODE=API_KEY
+EDGE_API_KEY=your_edge_api_key
+API_URL=https://yourserver.com/InnovatorServer
 
-# Optional configuration
-API_TIMEOUT=30
-API_RETRY_COUNT=3
-API_RETRY_DELAY=1
-LOG_LEVEL=INFO
-
-# Innovator Edge overrides (uncomment if needed)
-# API_BACKEND=EDGE
-# API_BASE_PATH=
-# EDGE_METHOD_PREFIX=methods
-# AUTH_MODE=API_KEY
-# EDGE_API_KEY_HEADER=Authorization
-# EDGE_API_KEY=your-edge-api-key
-# EDGE_BEARER_TOKEN=
-# EDGE_BASIC_USER=
-# EDGE_BASIC_PASS=
+# Optional
+ITEMTYPE_ALIASES=Problem:PR;Doc:Document;Part:Part
 ```
 
-### 3️⃣ Add to Claude Desktop
-Edit your Claude Desktop config file:
+### **Option B — Configurable Web Services (CWS) backend**
 
-**📁 Windows:** `%APPDATA%\Claude\claude_desktop_config.json`  
-**📁 macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+> Uses the same API-key auth pattern for compatibility.
+
+```env
+API_BACKEND=ARAS
+AUTH_MODE=API_KEY
+EDGE_API_KEY=your_cws_api_key      # Works for CWS even though named EDGE_API_KEY
+API_URL=https://yourserver.com/InnovatorServer
+
+ITEMTYPE_ALIASES=Problem:PR;Doc:Document;Part:Part
+```
+
+Notes:
+
+* You **do not** need to manually append `/Server/Odata`; this is handled internally.
+* The server normalizes URLs and applies the correct request pattern for Edge or CWS automatically.
+
+---
+
+## 3️⃣ Add to Claude Desktop
+
+Edit:
+
+* **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+* **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
-    "api-server": {
-      "command": "py",
-      "args": ["C:/path/to/your/aras-claude-agent/main.py"]
+    "aras-api": {
+      "command": "python",
+      "args": ["-m", "src.server"],
+      "cwd": "/absolute/path/to/aras-claude-agent"
     }
   }
 }
 ```
 
-> 💡 **Replace the path** with your actual installation directory!
+Restart Claude Desktop.
 
-### 4️⃣ Test your setup!
+---
 
-**Verify installation:**
+## 4️⃣ Verify the server
+
 ```bash
-python main.py
+python -m src.server
 ```
-The server should start without any JSON parsing errors.
 
-**Test in Claude Desktop:**
-Restart Claude Desktop and try:
-- *"Test my API connection"*
-- *"Get all Parts from the database"*
-- *"Show me the available Document types"*
+If it starts and waits silently, your environment is correct. Claude will launch it automatically when needed.
 
-## Multiple backends
-
-Set `API_BACKEND` to choose between Aras Innovator and Innovator Edge. The default base path is `/Server/Odata` for Aras and blank for Edge, but you can override it with `API_BASE_PATH`. When using Edge, configure the authentication mode (`AUTH_MODE`) and the related credentials such as `EDGE_API_KEY`, `EDGE_BEARER_TOKEN`, or `EDGE_BASIC_USER` and `EDGE_BASIC_PASS`. The MCP tool set stays the same across both backends.
+---
 
 ## 🛠️ Available tools
 
-| Tool | Description | What You Can Ask | Example Endpoint |
-|------|-------------|------------------|------------------|
-| **`test_api_connection`** | Test OAuth 2.0 authentication | *"Test my API connection"* | N/A |
-| **`api_get_items`** | Query configured OData endpoints | *"Get all Parts"* | `Part`, `Document` |
-| **`api_create_item`** | Create items through the active backend | *"Create a new Part"* | `Part`, `Document` |
-| **`api_call_method`** | Call server methods or Edge operations | *"Call method GetItemsInBOM"* | Method names |
-| **`api_get_list`** | Get list values from the current backend | *"Show Part categories"* | List IDs |
+| Tool                   | Description                         | Example prompt                         |
+| ---------------------- | ----------------------------------- | -------------------------------------- |
+| `test_api_connection`  | Confirm connectivity + auth         | “Test my API connection.”              |
+| `api_get_items`        | Query any ItemType via OData        | “Get all Parts.”                       |
+| `api_create_item`      | Create a new Aras item              | “Create a new Document named TestDoc.” |
+| `api_call_method`      | Invoke Aras server methods          | “Call GetItemsInBOM.”                  |
+| `api_get_list`         | Fetch list values                   | “Show Part classifications.”           |
+| `api_get_metadata`     | Download and inspect `$metadata`    | “Show me all ItemTypes.”               |
+| `api_resolve_itemtype` | Map friendly names → real ItemTypes | “What ItemType is ‘Doc’?”              |
+| `api_list_itemtypes`   | List ItemTypes discovered from CSDL | “List available ItemTypes.”            |
 
-## 🔐 Authentication
+---
 
-The default `AUTH_MODE=ARAS_OAUTH` uses the **Resource Owner Password Credentials Grant** with Aras Innovator 14+:
+## 🔧 Authentication details
 
-1. **Token Request**: `https://your-server/oauthserver/connect/token`
-2. **Scope**: `openid Innovator offline_access`  
-3. **Client ID**: `IOMApp` (default Aras client)
-4. **Grant Type**: `password`
-5. **Required**: `username`, `password`, `database`
+This project uses a simple API-key model compatible with:
 
-Other supported modes:
+### **Aras InnovatorEdge**
 
-- `API_KEY`: Adds an API key header defined by `EDGE_API_KEY_HEADER`.
-- `EDGE_BEARER`: Uses a static bearer token from `EDGE_BEARER_TOKEN`.
-- `BASIC`: Applies HTTP basic auth with `EDGE_BASIC_USER` and `EDGE_BASIC_PASS`.
-- `NONE`: No authentication headers are sent.
+* Direct API key header
+
+### **CWS (standard Aras REST)**
+
+* Same API key header style
+* Server automatically adapts request format to CWS/Innovator REST
+
+No OAuth 2.0 configuration is required for the CWS or Edge flows described above.
+
+---
 
 ## 💬 Example conversations
 
 ```
-You: "Test my API connection"
-Claude: ✅ Connection ready.
-Backend: ARAS
-Auth mode: ARAS_OAUTH
-Base URL: https://your-server.com/YourDatabase
+You: "Test my API connection."
+Claude: ✓ Successfully authenticated. Ready for API calls.
 
-You: "Get all Parts where item_number starts with 'P-'"
-Claude: Retrieved 25 Parts matching your criteria...
+You: "Create 10 Parts numbered ROBOT-001 to ROBOT-010."
+Claude: Created 10 Part items.
 
-You: "Create a new Document with name 'User Manual v2'"
-Claude: Successfully created Document with ID A1B2C3D4...
+You: "Get all Problem Reports assigned to me."
+Claude: Retrieved 12 PR items.
 ```
 
-## 🔧 Recent Fixes & Updates
-
-### ✅ v1.1.0 - OAuth 2.0 & JSON Parsing Fixes
-- **Fixed**: "Unexpected token 'A', 'API MCP Se'... is not valid JSON" error
-- **Added**: Proper OAuth 2.0 authentication with `requests-oauthlib`
-- **Added**: Database parameter requirement for Aras authentication
-- **Added**: Multiple backends via `API_BACKEND`, adjustable base paths, and method routing
-- **Added**: Flexible auth modes (`ARAS_OAUTH`, `API_KEY`, `EDGE_BEARER`, `BASIC`, `NONE`)
-- **Fixed**: All print statements redirected to stderr to prevent stdout contamination
-- **Updated**: OData endpoint support (`/Server/Odata`) and default request headers
-
-### 🛠️ Troubleshooting
-
-**🔗 OAuth authentication failing?**
-- Verify your Aras server supports OAuth 2.0 (Aras 14+)
-- Check credentials and database name in `.env`
-- Ensure user has API access permissions
-- If you're using Innovator Edge, confirm `AUTH_MODE` matches the credentials supplied (`API_KEY`, `EDGE_BEARER`, or `BASIC`)
-
-**🔐 "Missing database parameter" error?**
-- Add `ARAS_DATABASE=YourDatabaseName` and keep `AUTH_MODE=ARAS_OAUTH`
-
-**🤖 Claude not finding tools?**
-- Restart Claude Desktop after config changes
-- Check file paths in `claude_desktop_config.json`
-
-**🐍 JSON parsing errors?**
-- ✅ Fixed in v1.1.0! Update to latest version
+---
 
 ## 🏗️ Architecture
 
 ```
 Claude Desktop
-    ↓ JSON-RPC
-MCP Server (stdio)
-    ↓ OAuth 2.0
+      ↓ JSON-RPC MCP
+Python MCP Server
+      ↓ Edge or CWS REST API
 Aras Innovator
-    ↓ OData REST API
+      ↓ OData / metadata / methods
 PLM Database
 ```
 
+---
+
+## 🔍 CWS & Edge Support (Summary)
+
+| Feature                         | InnovatorEdge | CWS |
+| ------------------------------- | ------------- | --- |
+| API key auth                    | ✔             | ✔   |
+| OData metadata discovery        | ✔             | ✔   |
+| Item creation                   | ✔             | ✔   |
+| Method calls                    | ✔             | ✔   |
+| Automatic URL normalization     | ✔             | ✔   |
+| Name → ItemType resolution      | ✔             | ✔   |
+| Schema-aware test data creation | ✔             | ✔   |
+
+Both backends provide the **same toolset** to Claude—no prompt changes required.
+
+---
+
+## 🛠️ Troubleshooting
+
+* **Authentication errors** → check `API_BACKEND`, `API_URL`, and `EDGE_API_KEY`
+* **Claude not seeing tools** → restart Claude Desktop
+* **Metadata not loading** → confirm `/Server/OData` is reachable (CWS) or API-key access is enabled (Edge)
+
+---
+
 ## 🤝 Contributing
 
-Found a bug or want to add features? We welcome contributions! Please check our issues or submit a pull request.
+Issues and pull requests are welcome!
 
-## 📚 Learn More
-
-- [Aras Developer Documentation](https://www.arasdeveloper.com)
-- [Model Context Protocol](https://modelcontextprotocol.io)
-- [Aras OAuth 2.0 Guide](https://community.aras.com)
+---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details. 
+MIT License — see [LICENSE](LICENSE).
